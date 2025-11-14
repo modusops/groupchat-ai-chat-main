@@ -26,6 +26,8 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 const isVoiceSupported = !!SpeechRecognition;
 let recognition = null;
 let isRecording = false;
+let gradientCycleInterval = null;
+let currentGradientIndex = 1;
 
 // Initialize chat on page load
 window.addEventListener('load', () => {
@@ -117,6 +119,11 @@ function startVoiceRecording(inputType = 'main') {
         
         // Update button to show recording state
         updateInputButton(inputType);
+        
+        // Start gradient animation if in assistant view
+        if (currentView === 'assistant') {
+            startGradientAnimation();
+        }
     } catch (error) {
         isRecording = false;
     }
@@ -143,6 +150,9 @@ function stopVoiceRecording() {
     
     // Update button to show normal state
     updateInputButton(inputType);
+    
+    // Stop gradient animation
+    stopGradientAnimation();
 }
 
 /**
@@ -160,14 +170,77 @@ function handleTranscription(text) {
 }
 
 /**
+ * Start gradient animation during voice recording
+ */
+function startGradientAnimation() {
+    const gradientElement = document.getElementById('voiceGradient');
+    if (!gradientElement) return;
+    
+    // Reset to first gradient
+    currentGradientIndex = 1;
+    
+    // Show the gradient overlay
+    gradientElement.classList.remove('hidden');
+    gradientElement.classList.add('active', 'gradient-1');
+    
+    // Cycle through gradients every 600ms
+    gradientCycleInterval = setInterval(() => {
+        cycleGradient();
+    }, 600);
+}
+
+/**
+ * Stop gradient animation
+ */
+function stopGradientAnimation() {
+    const gradientElement = document.getElementById('voiceGradient');
+    if (!gradientElement) return;
+    
+    // Clear the interval
+    if (gradientCycleInterval) {
+        clearInterval(gradientCycleInterval);
+        gradientCycleInterval = null;
+    }
+    
+    // Hide the gradient overlay
+    gradientElement.classList.remove('active');
+    
+    // After fade out animation, hide and remove all gradient classes
+    setTimeout(() => {
+        gradientElement.classList.add('hidden');
+        gradientElement.classList.remove('gradient-1', 'gradient-2', 'gradient-3', 'gradient-4');
+        currentGradientIndex = 1;
+    }, 300);
+}
+
+/**
+ * Cycle to the next gradient
+ */
+function cycleGradient() {
+    const gradientElement = document.getElementById('voiceGradient');
+    if (!gradientElement) return;
+    
+    // Remove current gradient class
+    gradientElement.classList.remove(`gradient-${currentGradientIndex}`);
+    
+    // Move to next gradient (1 -> 2 -> 3 -> 4 -> 1)
+    currentGradientIndex = (currentGradientIndex % 4) + 1;
+    
+    // Add new gradient class
+    gradientElement.classList.add(`gradient-${currentGradientIndex}`);
+}
+
+/**
  * Toggle voice recording on/off
+ * Note: Only starts recording. Stops automatically on silence detection.
  */
 function toggleVoiceRecording(inputType = 'main') {
-    if (isRecording) {
-        stopVoiceRecording();
-    } else {
+    // Only start recording if not already recording
+    // Recording will stop automatically when silence is detected
+    if (!isRecording) {
         startVoiceRecording(inputType);
     }
+    // If already recording, do nothing - let it continue until silence is detected
 }
 
 /**
